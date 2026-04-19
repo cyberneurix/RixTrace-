@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RixTrace — CNIS Module 01 Build Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#06080b;--s1:#0c0f14;--s2:#111620;--s3:#161c28;
+  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.12);--border3:rgba(255,255,255,0.2);
+  --accent:#00ffb3;--accent2:#00c87a;--accentd:rgba(0,255,179,0.1);--accentd2:rgba(0,255,179,0.05);
+  --blue:#3b9eff;--blued:rgba(59,158,255,0.1);
+  --purple:#9d7fff;--purpled:rgba(157,127,255,0.1);
+  --amber:#ffb83b;--amberd:rgba(255,184,59,0.1);
+  --red:#ff4d4d;--redd:rgba(255,77,77,0.1);
+  --cyan:#00d4ff;--cyand:rgba(0,212,255,0.1);
+  --text:#dde2ec;--textm:#7a8399;--textd:#a0aabf;
+  --mono:'JetBrains Mono',monospace;--sans:'Syne',sans-serif;
+  --radius:8px;--radius2:12px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--s1);}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2);}
+.app{display:flex;height:100vh;overflow:hidden;}
+.sidebar{width:220px;min-width:220px;background:var(--s1);border-right:0.5px solid var(--border2);display:flex;flex-direction:column;z-index:10;}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{height:52px;min-height:52px;background:var(--s1);border-bottom:0.5px solid var(--border2);display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:5;}
+.content{flex:1;overflow-y:auto;padding:20px;}
+.logo{padding:18px 16px 14px;border-bottom:0.5px solid var(--border);}
+.logo-mark{display:flex;align-items:center;gap:9px;margin-bottom:4px;}
+.logo-icon{width:28px;height:28px;border-radius:6px;background:var(--accentd);border:1px solid rgba(0,255,179,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo-icon svg{width:14px;height:14px;}
+.logo-name{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--accent);letter-spacing:0.06em;}
+.logo-tag{font-family:var(--mono);font-size:9px;color:var(--textm);letter-spacing:0.12em;text-transform:uppercase;}
+.nav{padding:10px 8px;flex:1;overflow-y:auto;}
+.nav-section{margin-bottom:16px;}
+.nav-label{font-family:var(--mono);font-size:9px;color:var(--textm);letter-spacing:0.15em;text-transform:uppercase;padding:0 8px 6px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:6px;cursor:pointer;border:0.5px solid transparent;transition:all 0.15s;font-size:12px;color:var(--textd);font-weight:500;}
+.nav-item:hover{background:var(--s2);color:var(--text);}
+.nav-item.active{background:var(--accentd);border-color:rgba(0,255,179,0.2);color:var(--accent);}
+.nav-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:9px;background:var(--s3);padding:2px 6px;border-radius:10px;color:var(--textm);}
+.sidebar-footer{padding:12px 16px;border-top:0.5px solid var(--border);}
+.sync-indicator{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;cursor:pointer;margin-bottom:6px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;}
+.sync-dot.connected{background:var(--accent);animation:pulse 2s infinite;}
+.sync-dot.disconnected{background:var(--red);}
+.sync-dot.connecting{background:var(--amber);animation:pulse 0.8s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.rt-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;font-family:var(--mono);font-size:9px;border:0.5px solid;cursor:pointer;transition:all 0.2s;}
+.rt-pill.rt-off{border-color:var(--border);color:var(--textm);background:transparent;}
+.rt-pill.rt-on{border-color:rgba(0,212,255,0.4);color:var(--cyan);background:rgba(0,212,255,0.08);}
+.rt-pill.rt-connecting{border-color:rgba(255,184,59,0.4);color:var(--amber);background:rgba(255,184,59,0.08);}
+.rt-dot{width:5px;height:5px;border-radius:50%;}
+.rt-pill.rt-off .rt-dot{background:var(--textm);}
+.rt-pill.rt-on .rt-dot{background:var(--cyan);animation:pulse 1.2s infinite;}
+.rt-pill.rt-connecting .rt-dot{background:var(--amber);animation:pulse 0.6s infinite;}
+.page-title{font-size:13px;font-weight:600;color:var(--text);}
+.page-subtitle{font-size:11px;color:var(--textm);margin-top:1px;font-family:var(--mono);}
+.topbar-actions{display:flex;align-items:center;gap:8px;}
+.btn{padding:6px 12px;border-radius:6px;font-family:var(--mono);font-size:10px;cursor:pointer;transition:all 0.15s;border:0.5px solid;letter-spacing:0.05em;}
+.btn-ghost{background:transparent;border-color:var(--border2);color:var(--textd);}
+.btn-ghost:hover{border-color:var(--border3);color:var(--text);}
+.btn-accent{background:var(--accentd);border-color:rgba(0,255,179,0.3);color:var(--accent);}
+.btn-accent:hover{background:rgba(0,255,179,0.15);}
+.btn-blue{background:var(--blued);border-color:rgba(59,158,255,0.3);color:var(--blue);}
+.btn-cyan{background:var(--cyand);border-color:rgba(0,212,255,0.3);color:var(--cyan);}
+.card{background:var(--s1);border:0.5px solid var(--border2);border-radius:var(--radius2);overflow:hidden;}
+.card-head{padding:12px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:var(--mono);font-size:10px;color:var(--textm);text-transform:uppercase;letter-spacing:0.12em;}
+.card-body{padding:14px 16px;}
+.metrics-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
+.metric{background:var(--s1);border:0.5px solid var(--border2);border-radius:var(--radius);padding:14px 16px;position:relative;overflow:hidden;}
+.metric::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.metric.g::after{background:linear-gradient(90deg,var(--accent),transparent);}
+.metric.b::after{background:linear-gradient(90deg,var(--blue),transparent);}
+.metric.p::after{background:linear-gradient(90deg,var(--purple),transparent);}
+.metric.a::after{background:linear-gradient(90deg,var(--amber),transparent);}
+.metric.r::after{background:linear-gradient(90deg,var(--red),transparent);}
+.metric-lbl{font-family:var(--mono);font-size:9px;color:var(--textm);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:8px;}
+.metric-val{font-family:var(--mono);font-size:24px;font-weight:600;}
+.metric.g .metric-val{color:var(--accent);}
+.metric.b .metric-val{color:var(--blue);}
+.metric.p .metric-val{color:var(--purple);}
+.metric.a .metric-val{color:var(--amber);}
+.metric.r .metric-val{color:var(--red);}
+.metric-sub{font-size:11px;color:var(--textm);margin-top:4px;}
+.phase-row{padding:10px 0;border-bottom:0.5px solid var(--border);}
+.phase-row:last-child{border-bottom:none;}
+.phase-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;cursor:pointer;}
+.phase-name{font-size:12px;font-weight:500;}
+.phase-meta{font-family:var(--mono);font-size:10px;color:var(--textm);}
+.pbar{height:3px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;}
+.pbar-fill{height:100%;border-radius:2px;transition:width 0.4s ease;}
+.task-table{width:100%;border-collapse:collapse;font-size:12px;}
+.task-table th{font-family:var(--mono);font-size:9px;color:var(--textm);text-align:left;padding:8px 10px;border-bottom:0.5px solid var(--border2);text-transform:uppercase;letter-spacing:0.1em;white-space:nowrap;}
+.task-table td{padding:8px 10px;border-bottom:0.5px solid rgba(255,255,255,0.03);vertical-align:middle;}
+.task-table tr:last-child td{border-bottom:none;}
+.task-table tbody tr{transition:background 0.1s;cursor:pointer;}
+.task-table tbody tr:hover{background:rgba(255,255,255,0.02);}
+.task-table tbody tr.selected{background:var(--accentd2);}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:0.05em;white-space:nowrap;}
+.s-done{background:var(--accentd);color:var(--accent);border:0.5px solid rgba(0,255,179,0.25);}
+.s-inprog{background:var(--amberd);color:var(--amber);border:0.5px solid rgba(255,184,59,0.25);}
+.s-notstart{background:rgba(255,255,255,0.04);color:var(--textm);border:0.5px solid var(--border);}
+.s-blocked{background:var(--redd);color:var(--red);border:0.5px solid rgba(255,77,77,0.25);}
+.s-review{background:var(--blued);color:var(--blue);border:0.5px solid rgba(59,158,255,0.25);}
+.p-hi{background:var(--redd);color:var(--red);}
+.p-med{background:var(--amberd);color:var(--amber);}
+.p-lo{background:var(--blued);color:var(--blue);}
+.p-crit{background:rgba(255,0,0,0.2);color:#ff6b6b;border:0.5px solid rgba(255,0,0,0.3);}
+.chk{width:16px;height:16px;border-radius:3px;border:1px solid var(--border2);background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;}
+.chk:hover{border-color:var(--accent);}
+.chk.done{background:var(--accent);border-color:var(--accent);}
+.chk.done::after{content:'✓';font-size:9px;color:#000;font-weight:700;}
+.chk.inprog{border-color:var(--amber);}
+.chk.inprog::after{content:'◑';font-size:8px;color:var(--amber);}
+.chk.blocked{border-color:var(--red);}
+.chk.blocked::after{content:'✕';font-size:9px;color:var(--red);}
+.hrs-inp{width:48px;background:var(--s2);color:var(--text);border:0.5px solid var(--border);border-radius:4px;font-family:var(--mono);font-size:11px;padding:2px 6px;text-align:center;outline:none;}
+.hrs-inp:focus{border-color:var(--accent);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.grid2t{display:grid;grid-template-columns:280px 1fr;gap:12px;}
+.week-card{background:var(--s2);border:0.5px solid var(--border);border-radius:var(--radius);padding:12px;cursor:pointer;transition:all 0.15s;}
+.week-card:hover{border-color:var(--border2);}
+.week-card.active-week{border-color:rgba(0,255,179,0.35);background:var(--accentd2);}
+.wk-num{font-family:var(--mono);font-size:9px;color:var(--textm);margin-bottom:5px;letter-spacing:0.1em;}
+.wk-focus{font-size:12px;font-weight:600;margin-bottom:4px;}
+.wk-phase{font-family:var(--mono);font-size:9px;margin-bottom:4px;}
+.wk-out{font-size:11px;color:var(--textm);}
+.wk-hrs{font-family:var(--mono);font-size:9px;color:var(--textm);margin-top:6px;}
+.arch-layer{background:var(--s2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;cursor:pointer;transition:all 0.15s;}
+.arch-layer:hover{border-color:var(--border2);}
+.arch-layer.selected-layer{border-color:rgba(0,255,179,0.3);background:var(--accentd2);}
+.arch-ico{font-size:18px;margin-bottom:6px;}
+.arch-name{font-size:12px;font-weight:600;margin-bottom:3px;}
+.arch-sub{font-size:10px;color:var(--textm);}
+.signal-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--border);}
+.signal-item:last-child{border-bottom:none;}
+.signal-name{font-family:var(--mono);font-size:11px;min-width:100px;}
+.signal-type{font-size:11px;color:var(--textm);flex:1;}
+.settings-section{margin-bottom:20px;}
+.settings-title{font-family:var(--mono);font-size:10px;color:var(--textm);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:10px;}
+.form-row{margin-bottom:10px;}
+.form-label{font-family:var(--mono);font-size:10px;color:var(--textd);margin-bottom:5px;display:block;}
+.form-input{width:100%;background:var(--s2);color:var(--text);border:0.5px solid var(--border2);border-radius:6px;font-family:var(--mono);font-size:11px;padding:8px 12px;outline:none;transition:border-color 0.15s;}
+.form-input:focus{border-color:var(--accent);}
+.form-input::placeholder{color:var(--textm);}
+.form-hint{font-family:var(--mono);font-size:9px;color:var(--textm);margin-top:4px;}
+.settings-divider{height:0.5px;background:var(--border);margin:16px 0;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;}
+.toggle-label{font-size:12px;color:var(--textd);}
+.toggle{width:36px;height:20px;border-radius:10px;border:0.5px solid var(--border2);background:var(--s3);cursor:pointer;position:relative;transition:all 0.2s;}
+.toggle.on{background:var(--accentd);border-color:rgba(0,255,179,0.3);}
+.toggle::after{content:'';width:14px;height:14px;border-radius:50%;background:var(--textm);position:absolute;top:2px;left:2px;transition:all 0.2s;}
+.toggle.on::after{background:var(--accent);left:18px;}
+.detail-panel{background:var(--s2);border:0.5px solid var(--border2);border-radius:var(--radius2);padding:16px;margin-top:12px;}
+.detail-title{font-size:13px;font-weight:600;margin-bottom:10px;}
+.detail-row{display:flex;gap:16px;margin-bottom:10px;flex-wrap:wrap;}
+.detail-field{flex:1;min-width:120px;}
+.detail-lbl{font-family:var(--mono);font-size:9px;color:var(--textm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;}
+.detail-val{font-size:12px;color:var(--text);}
+.notes-area{width:100%;background:var(--s3);color:var(--text);border:0.5px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:11px;padding:8px 12px;resize:none;height:60px;outline:none;margin-top:10px;transition:border-color 0.15s;}
+.notes-area:focus{border-color:var(--accent);}
+.dep-chip{display:inline-block;padding:2px 8px;background:var(--blued);border:0.5px solid rgba(59,158,255,0.2);border-radius:4px;font-family:var(--mono);font-size:9px;color:var(--blue);margin:2px;}
+.sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sec-title{font-size:13px;font-weight:600;}
+.tag{display:inline-block;padding:1px 7px;border-radius:3px;font-family:var(--mono);font-size:9px;background:rgba(255,255,255,0.05);color:var(--textm);}
+.hidden{display:none!important;}
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:8px;font-family:var(--mono);font-size:11px;z-index:9999;transition:opacity 0.3s;}
+.toast.ok{background:#0a2a1a;border:0.5px solid rgba(0,255,179,0.4);color:var(--accent);}
+.toast.err{background:#2a0a0a;border:0.5px solid rgba(255,77,77,0.4);color:var(--red);}
+.toast.info{background:#0a1a2a;border:0.5px solid rgba(59,158,255,0.4);color:var(--blue);}
+.toast.rt{background:#071a20;border:0.5px solid rgba(0,212,255,0.4);color:var(--cyan);}
+select{background:var(--s2);color:var(--text);border:0.5px solid var(--border2);border-radius:5px;font-family:var(--mono);font-size:10px;padding:4px 8px;cursor:pointer;outline:none;}
+select:focus{border-color:var(--accent);}
+.gantt-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.gantt-label{font-family:var(--mono);font-size:10px;color:var(--textm);width:130px;text-align:right;flex-shrink:0;}
+.gantt-track{flex:1;background:rgba(255,255,255,0.04);height:18px;border-radius:3px;position:relative;overflow:hidden;}
+.gantt-fill{height:100%;border-radius:3px;position:absolute;top:0;display:flex;align-items:center;padding-left:6px;font-family:var(--mono);font-size:9px;transition:width 0.5s ease;}
+.page{animation:fadein 0.2s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+.table-wrap{overflow-x:auto;}
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+.filter-count{font-family:var(--mono);font-size:10px;color:var(--textm);margin-left:auto;}
+.arch-detail-card{background:var(--s2);border:0.5px solid var(--border2);border-radius:var(--radius);padding:14px;margin-top:12px;}
+.arch-tech-chip{display:inline-block;padding:3px 9px;border-radius:4px;font-family:var(--mono);font-size:10px;margin:3px;border:0.5px solid var(--border2);background:var(--s3);color:var(--textd);}
+.rt-log{background:var(--s3);border:0.5px solid var(--border);border-radius:6px;padding:8px 12px;max-height:160px;overflow-y:auto;font-family:var(--mono);font-size:10px;line-height:1.8;}
+.rt-log-entry{display:flex;gap:10px;}
+.rt-log-ts{color:var(--textm);flex-shrink:0;font-size:9px;}
+.rt-log-evt{flex:1;}
+.rt-log-evt.insert{color:var(--accent);}
+.rt-log-evt.update{color:var(--amber);}
+.rt-log-evt.delete{color:var(--red);}
+.rt-log-evt.sys{color:var(--blue);}
+.rt-log-evt.err{color:var(--red);}
+@keyframes rtflash{0%{background:rgba(0,212,255,0.2);}100%{background:transparent;}}
+.rt-flash{animation:rtflash 1.2s ease-out;}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <div class="logo-icon">
+          <svg viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="2.5" stroke="#00ffb3" stroke-width="1.2"/>
+            <circle cx="7" cy="7" r="5.5" stroke="#00ffb3" stroke-width="0.6" stroke-dasharray="2 1.5"/>
+            <line x1="7" y1="1" x2="7" y2="3.5" stroke="#00ffb3" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="7" y1="10.5" x2="7" y2="13" stroke="#00ffb3" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="1" y1="7" x2="3.5" y2="7" stroke="#00ffb3" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="10.5" y1="7" x2="13" y2="7" stroke="#00ffb3" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div><div class="logo-name">RixTrace</div></div>
+      </div>
+      <div class="logo-tag">CNIS · Module 01</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">
+        <div class="nav-label">Overview</div>
+        <div class="nav-item active" onclick="gotoPage('dashboard')"><div class="nav-dot" style="background:var(--accent)"></div>Dashboard</div>
+        <div class="nav-item" onclick="gotoPage('phases')"><div class="nav-dot" style="background:var(--blue)"></div>Phase Map<span class="nav-badge" id="nb-phases">7</span></div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Execution</div>
+        <div class="nav-item" onclick="gotoPage('tasks')"><div class="nav-dot" style="background:var(--purple)"></div>Task Intel<span class="nav-badge" id="nb-tasks">50</span></div>
+        <div class="nav-item" onclick="gotoPage('weekly')"><div class="nav-dot" style="background:var(--amber)"></div>Weekly Ops</div>
+        <div class="nav-item" onclick="gotoPage('velocity')"><div class="nav-dot" style="background:var(--cyan)"></div>Velocity Log</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">System</div>
+        <div class="nav-item" onclick="gotoPage('arch')"><div class="nav-dot" style="background:var(--red)"></div>Architecture</div>
+        <div class="nav-item" onclick="gotoPage('signals')"><div class="nav-dot" style="background:var(--purple)"></div>Signal Sources</div>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Config</div>
+        <div class="nav-item" onclick="gotoPage('settings')"><div class="nav-dot" style="background:var(--textm)"></div>Supabase Sync</div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sync-indicator" onclick="gotoPage('settings')">
+        <div class="sync-dot disconnected" id="sync-dot"></div>
+        <span id="sync-label" style="font-family:var(--mono);font-size:10px;color:var(--textm)">Not connected</span>
+      </div>
+      <div id="rt-pill-wrap">
+        <div class="rt-pill rt-off" id="rt-pill" onclick="toggleRealtime()" title="Toggle realtime WebSocket">
+          <div class="rt-dot"></div>
+          <span id="rt-pill-label">Realtime off</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title" id="topbar-title">Dashboard</div>
+        <div class="page-subtitle" id="topbar-sub">RixTrace Build Command Centre</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" onclick="exportData()">↓ Export</button>
+        <button class="btn btn-blue" onclick="syncNow()" id="sync-btn">⟳ Sync</button>
+        <button class="btn btn-accent" onclick="resetConfirm()">⚡ Reset Demo</button>
+      </div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script>
+// ═══════════════════ DATA ═══════════════════
+const PHASES = [
+  {id:'P0',name:'Phase 0',sub:'Prototype & Scaffold',color:'#00ffb3',hours:16,weeks:'1-2',tasks:[
+    {id:'T001',name:'Docker + docker-compose setup',est:3,pri:'Critical',dep:[],track:'Infra'},
+    {id:'T002',name:'FastAPI skeleton + /health /scan endpoints',est:3,pri:'High',dep:['T001'],track:'Backend'},
+    {id:'T003',name:'PostgreSQL schema (findings, scans, users)',est:2,pri:'High',dep:['T001'],track:'Backend'},
+    {id:'T004',name:'Secrets management (.env + Vault stub)',est:1,pri:'High',dep:['T001'],track:'Infra'},
+    {id:'T005',name:'HIBP API integration',est:3,pri:'High',dep:['T002'],track:'Signals'},
+    {id:'T006',name:'DeHashed API integration',est:3,pri:'High',dep:['T002'],track:'Signals'},
+    {id:'T007',name:'Basic weighted scoring engine v1',est:1,pri:'Med',dep:['T005','T006'],track:'Intelligence'},
+    {id:'T008',name:'HTML report output (Jinja2 stub)',est:1,pri:'Med',dep:['T007'],track:'Reports'},
+    {id:'T009',name:'End-to-end pipeline smoke test',est:0.5,pri:'High',dep:['T008'],track:'QA'},
+  ]},
+  {id:'P1',name:'Phase 1',sub:'Core Stabilization',color:'#3b9eff',hours:38,weeks:'3-5',tasks:[
+    {id:'T010',name:'Structured error handling + custom exceptions',est:6,pri:'High',dep:['T002'],track:'Backend'},
+    {id:'T011',name:'Retry logic with exponential backoff',est:5,pri:'Med',dep:['T010'],track:'Backend'},
+    {id:'T012',name:'Structured logging (structlog / JSON logs)',est:5,pri:'Med',dep:['T002'],track:'Infra'},
+    {id:'T013',name:'Celery + Redis job queue',est:8,pri:'High',dep:['T002'],track:'Backend'},
+    {id:'T014',name:'Dead-letter queue handling',est:3,pri:'Med',dep:['T013'],track:'Backend'},
+    {id:'T015',name:'PostgreSQL indexing + query optimization',est:5,pri:'Med',dep:['T003'],track:'Backend'},
+    {id:'T016',name:'API versioning (/api/v1/)',est:2,pri:'Med',dep:['T002'],track:'Backend'},
+    {id:'T017',name:'GitHub Actions CI pipeline (test + lint)',est:4,pri:'Med',dep:['T012'],track:'Infra'},
+  ]},
+  {id:'P2',name:'Phase 2',sub:'Signal Expansion',color:'#9d7fff',hours:42,weeks:'6-8',tasks:[
+    {id:'T018',name:'Amass subdomain recon integration',est:6,pri:'High',dep:['T013'],track:'Signals'},
+    {id:'T019',name:'DNStwist domain spoof detection',est:6,pri:'High',dep:['T013'],track:'Signals'},
+    {id:'T020',name:'crt.sh certificate transparency',est:5,pri:'Med',dep:['T013'],track:'Signals'},
+    {id:'T021',name:'Pastehunter paste monitoring',est:6,pri:'Med',dep:['T013'],track:'Signals'},
+    {id:'T022',name:'Tor proxy setup + .onion routing',est:4,pri:'High',dep:['T002'],track:'Signals'},
+    {id:'T023',name:'Shodan API integration',est:4,pri:'Med',dep:['T013'],track:'Signals'},
+    {id:'T024',name:'GreyNoise / Censys integration',est:4,pri:'Low',dep:['T013'],track:'Signals'},
+    {id:'T025',name:'Deduplication + normalization engine',est:6,pri:'High',dep:['T018','T019'],track:'Intelligence'},
+    {id:'T026',name:'Scan scheduling (cron-style recurring)',est:4,pri:'Med',dep:['T013'],track:'Backend'},
+  ]},
+  {id:'P3',name:'Phase 3',sub:'Scoring + Intelligence',color:'#ffb83b',hours:30,weeks:'9-10',tasks:[
+    {id:'T027',name:'Scoring model v2 — weighted multi-signal',est:8,pri:'High',dep:['T025'],track:'Intelligence'},
+    {id:'T028',name:'Risk categorisation + severity mapping',est:6,pri:'High',dep:['T027'],track:'Intelligence'},
+    {id:'T029',name:'Explainability layer ("why this matters")',est:6,pri:'Med',dep:['T028'],track:'Intelligence'},
+    {id:'T030',name:'Cross-signal correlation engine',est:6,pri:'Med',dep:['T028'],track:'Intelligence'},
+    {id:'T031',name:'Historical trend tracking per target',est:4,pri:'Low',dep:['T027'],track:'Intelligence'},
+  ]},
+  {id:'P4',name:'Phase 4',sub:'Report Engine',color:'#ff4d4d',hours:32,weeks:'11-12',tasks:[
+    {id:'T032',name:'Report schema + section architecture',est:6,pri:'High',dep:['T030'],track:'Reports'},
+    {id:'T033',name:'Jinja2 HTML report templates',est:8,pri:'High',dep:['T032'],track:'Reports'},
+    {id:'T034',name:'PDF export (WeasyPrint / Puppeteer)',est:5,pri:'Med',dep:['T033'],track:'Reports'},
+    {id:'T035',name:'AI executive summary (Claude API)',est:6,pri:'High',dep:['T033'],track:'Reports'},
+    {id:'T036',name:'STIX / JSON / CSV export formats',est:4,pri:'Low',dep:['T032'],track:'Reports'},
+    {id:'T037',name:'Webhook + email notification on scan complete',est:3,pri:'Med',dep:['T033'],track:'Backend'},
+  ]},
+  {id:'P5',name:'Phase 5',sub:'Product Layer',color:'#00d4ff',hours:30,weeks:'13-15',tasks:[
+    {id:'T038',name:'Auth system — JWT + refresh tokens',est:6,pri:'High',dep:['T002'],track:'Backend'},
+    {id:'T039',name:'Multi-tenant schema isolation',est:5,pri:'High',dep:['T038'],track:'Backend'},
+    {id:'T040',name:'Scan input UI — domain/email entry',est:8,pri:'High',dep:['T038'],track:'Product'},
+    {id:'T041',name:'Results dashboard — live scan view',est:8,pri:'High',dep:['T040'],track:'Product'},
+    {id:'T042',name:'Report viewer + download UI',est:5,pri:'Med',dep:['T035','T040'],track:'Product'},
+    {id:'T043',name:'Stripe integration + usage billing',est:6,pri:'Med',dep:['T039'],track:'Product'},
+  ]},
+  {id:'P6',name:'Phase 6',sub:'Hardening + GTM',color:'#00ffb3',hours:22,weeks:'16-18',tasks:[
+    {id:'T044',name:'Rate limiting (per-key, per-IP)',est:4,pri:'High',dep:['T038'],track:'Security'},
+    {id:'T045',name:'Input validation + sanitisation layer',est:3,pri:'High',dep:['T002'],track:'Security'},
+    {id:'T046',name:'RBAC + access control policies',est:4,pri:'High',dep:['T038'],track:'Security'},
+    {id:'T047',name:'Database backup + point-in-time recovery',est:4,pri:'High',dep:['T003'],track:'Infra'},
+    {id:'T048',name:'Monitoring — Sentry + Prometheus/Grafana',est:5,pri:'Med',dep:['T012'],track:'Infra'},
+    {id:'T049',name:'Data retention + GDPR scrub policy',est:3,pri:'Med',dep:['T003'],track:'Security'},
+    {id:'T050',name:'Pentest + final security review',est:5,pri:'High',dep:['T044','T045','T046'],track:'QA'},
+  ]},
+];
+
+const WEEKS_DATA=[
+  {n:1,focus:'Docker + FastAPI',outcome:'Containers running, /scan alive',phase:'P0',hrs:4},
+  {n:2,focus:'HIBP + DeHashed',outcome:'Credential data flowing',phase:'P0',hrs:4},
+  {n:3,focus:'Error handling + logging',outcome:'Stable traceable API',phase:'P1',hrs:4},
+  {n:4,focus:'Celery + Redis queue',outcome:'Async scan pipeline',phase:'P1',hrs:4},
+  {n:5,focus:'CI + DB optimisation',outcome:'Tests green, queries fast',phase:'P1',hrs:4},
+  {n:6,focus:'Amass + DNStwist',outcome:'Subdomain + spoof signals',phase:'P2',hrs:4},
+  {n:7,focus:'Tor + Pastehunter',outcome:'Dark web access live',phase:'P2',hrs:4},
+  {n:8,focus:'Dedup + normalisation',outcome:'Clean multi-signal data',phase:'P2',hrs:4},
+  {n:9,focus:'Scoring model v2',outcome:'Weighted risk scores',phase:'P3',hrs:4},
+  {n:10,focus:'Explainability + correlation',outcome:'Insight layer complete',phase:'P3',hrs:4},
+  {n:11,focus:'Report engine + PDF',outcome:'Downloadable reports',phase:'P4',hrs:4},
+  {n:12,focus:'AI summary + STIX export',outcome:'Full report package',phase:'P4',hrs:4},
+  {n:13,focus:'Auth + multi-tenant',outcome:'Secure user isolation',phase:'P5',hrs:4},
+  {n:14,focus:'Scan UI + dashboard',outcome:'Usable product',phase:'P5',hrs:4},
+  {n:15,focus:'Stripe + billing',outcome:'Revenue-ready',phase:'P5',hrs:4},
+  {n:16,focus:'Rate limiting + RBAC',outcome:'Hardened API',phase:'P6',hrs:4},
+  {n:17,focus:'Monitoring + backup',outcome:'Ops-ready infra',phase:'P6',hrs:4},
+  {n:18,focus:'Pentest + GTM launch',outcome:'Ship',phase:'P6',hrs:4},
+];
+
+const ARCH_LAYERS=[
+  {id:'L1',ico:'⚙',name:'Infra & Setup',sub:'Foundation',color:'#00ffb3',
+   techs:['Docker','docker-compose','PostgreSQL','Redis','GitHub Actions','Vault (secrets)','Nginx'],
+   desc:'The root of everything. Containerised services, secrets management, and CI/CD pipeline.'},
+  {id:'L2',ico:'⬡',name:'Core Backend',sub:'API + workers',color:'#3b9eff',
+   techs:['FastAPI','Python 3.11+','Celery','SQLAlchemy','Alembic','Pydantic','JWT/OAuth2'],
+   desc:'The nervous system. FastAPI handles sync requests; Celery workers process long-running scans asynchronously.'},
+  {id:'L3',ico:'◈',name:'Signal Integration',sub:'Data sources',color:'#9d7fff',
+   techs:['HIBP','DeHashed','Amass','DNStwist','crt.sh','Pastehunter','Shodan','GreyNoise','Tor'],
+   desc:'The sensory layer. Each integration is a modular adapter. Tor enables dark web traversal.'},
+  {id:'L4',ico:'◉',name:'Processing & Scoring',sub:'Intelligence engine',color:'#ffb83b',
+   techs:['Custom scoring engine','Dedup/normaliser','Risk categoriser','Explainability layer','Correlation engine','Trend tracker'],
+   desc:'Where raw signals become actionable intelligence. Multi-signal correlation is the core differentiator.'},
+  {id:'L5',ico:'▦',name:'Report Engine',sub:'Conversion layer',color:'#ff4d4d',
+   techs:['Jinja2','WeasyPrint/Puppeteer','Claude API (AI summary)','STIX 2.1','CSV/JSON','Webhook','Email (SMTP)'],
+   desc:'Converts intelligence into deliverables. AI-generated executive summaries via Claude API.'},
+  {id:'L6',ico:'◻',name:'Product Layer',sub:'UI + monetisation',color:'#00d4ff',
+   techs:['React/Next.js','Stripe','Multi-tenant isolation','RBAC','Report viewer','Scan dashboard'],
+   desc:'The customer-facing surface. Multi-tenant isolation and RBAC are non-negotiable for SaaS.'},
+];
+
+const SIGNALS_DATA=[
+  {name:'HIBP',type:'Credential leak — email breach check',tier:'Core',color:'#ffb83b'},
+  {name:'DeHashed',type:'Credential leak — password hash search',tier:'Core',color:'#ffb83b'},
+  {name:'Amass',type:'Subdomain enumeration & DNS recon',tier:'Core',color:'#3b9eff'},
+  {name:'DNStwist',type:'Domain spoofing + typosquat detection',tier:'Core',color:'#3b9eff'},
+  {name:'crt.sh',type:'Certificate transparency log mining',tier:'Core',color:'#9d7fff'},
+  {name:'Pastehunter',type:'Paste site monitoring (Pastebin etc.)',tier:'Core',color:'#9d7fff'},
+  {name:'Tor Relay',type:'Dark web .onion crawling',tier:'Advanced',color:'#ff4d4d'},
+  {name:'Shodan',type:'Internet-facing asset & port exposure',tier:'Advanced',color:'#00d4ff'},
+  {name:'GreyNoise',type:'IP noise analysis + threat context',tier:'Advanced',color:'#00d4ff'},
+  {name:'Censys',type:'Host + certificate enumeration',tier:'Extended',color:'#00ffb3'},
+];
+
+// ═══════════════════ STATE ═══════════════════
+const STORE_KEY='rixtrace_v3';
+let STATE={
+  tasks:{},notes:{},velocity:[0,0,0,0,0,0,0],
+  selectedTask:null,selectedPhase:null,activeWeek:1,
+  supabase:{
+    url:'https://alxtlzxbjpxxdrpohnvb.supabase.co',
+    anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFseHRsenhianB4eGRycG9obnZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NTM3NTUsImV4cCI6MjA5MDAyOTc1NX0.7B41JEAgwt0LmubRQoq4csfTdH4J_I2DXUzHe7iGZkw',
+    table:'rixtrace_tasks',
+    realtimeEnabled:false,
+    autoSync:true
+  },
+  syncStatus:'disconnected'
+};
+function loadState(){try{const s=localStorage.getItem(STORE_KEY);if(s){const p=JSON.parse(s);STATE={...STATE,...p};}}catch(e){}}
+function saveState(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(STATE));}catch(e){}
+  if(STATE.syncStatus==='connected'&&STATE.supabase.autoSync) pushToSupabase();
+}
+loadState();
+
+// ═══════════════════════════════════════════════════════
+//  SUPABASE REALTIME  — Phoenix WebSocket  [FIXED v2]
+//
+//  BUGS FIXED vs previous version:
+//  1. topic was "realtime:public:tablename" (v1) → now "realtime:*" (v2)
+//     Supabase Realtime v2 servers reject the old topic format with a
+//     phx_reply error, silently killing the subscription.
+//  2. join_ref field was missing from phx_join message
+//  3. postgres_changes events: data is in payload.data, not payload directly
+// ═══════════════════════════════════════════════════════
+let _ws = null;
+let _wsRef = 0;
+let _heartbeatTimer = null;
+let _reconnectTimer = null;
+let _rtEvents = [];
+
+function rtNow(){ return new Date().toLocaleTimeString('en-GB',{hour12:false}); }
+
+function rtAddLog(msg, type='sys'){
+  _rtEvents.unshift({ts:rtNow(),msg,type});
+  if(_rtEvents.length>60) _rtEvents.pop();
+  const el=document.getElementById('rt-event-log');
+  if(el) renderRTLog(el);
+}
+
+function renderRTLog(el){
+  el.innerHTML=_rtEvents.length
+    ? _rtEvents.map(e=>`<div class="rt-log-entry"><span class="rt-log-ts">${e.ts}</span><span class="rt-log-evt ${e.type}">${e.msg}</span></div>`).join('')
+    : '<span style="color:var(--textm)">No events yet.</span>';
+}
+
+function updateRTPill(state){
+  const pill=document.getElementById('rt-pill');
+  const lbl=document.getElementById('rt-pill-label');
+  if(!pill||!lbl) return;
+  pill.className='rt-pill rt-'+state;
+  lbl.textContent=state==='on'?'Realtime live':state==='connecting'?'Connecting…':'Realtime off';
+}
+
+function toggleRealtime(){
+  if(_ws && _ws.readyState===WebSocket.OPEN){
+    stopRealtime();
+    toast('Realtime disconnected','info');
+  } else {
+    startRealtime();
+  }
+}
+
+function startRealtime(){
+  if(STATE.syncStatus!=='connected'){
+    toast('Connect to Supabase first (Settings)','err'); return;
+  }
+  // Clean up stale socket
+  if(_ws){ try{_ws.onclose=null;_ws.close();}catch(e){} _ws=null; }
+  clearTimeout(_reconnectTimer);
+  stopHeartbeat();
+
+  const {url, anonKey, table} = STATE.supabase;
+  const wsBase = url.replace(/^https?:\/\//, 'wss://');
+  const wsURL  = `${wsBase}/realtime/v1/websocket?apikey=${anonKey}&vsn=1.0.0`;
+
+  updateRTPill('connecting');
+  rtAddLog('Opening WebSocket…','sys');
+
+  try { _ws = new WebSocket(wsURL); }
+  catch(e){
+    rtAddLog('WS failed: '+e.message,'err');
+    updateRTPill('off');
+    toast('WebSocket error: '+e.message,'err');
+    return;
+  }
+
+  _ws.onopen = () => {
+    rtAddLog('Connected — joining channel','sys');
+    joinChannel(table);
+    startHeartbeat();
+    updateRTPill('on');
+    STATE.supabase.realtimeEnabled=true;
+    try{localStorage.setItem(STORE_KEY,JSON.stringify(STATE));}catch(e){}
+    toast('Realtime connected ✓','rt');
+    if(currentPage==='settings') renderCurrentPage();
+  };
+
+  _ws.onmessage = (evt) => {
+    let msg; try{ msg=JSON.parse(evt.data); }catch(e){ return; }
+    handlePhoenixMessage(msg);
+  };
+
+  _ws.onerror = () => { rtAddLog('WebSocket error','err'); };
+
+  _ws.onclose = (e) => {
+    rtAddLog(`Closed (${e.code})${e.reason?' — '+e.reason:''}`, 'sys');
+    stopHeartbeat();
+    updateRTPill('off');
+    STATE.supabase.realtimeEnabled=false;
+    if(e.code!==1000 && e.code!==1001){
+      rtAddLog('Reconnecting in 6s…','sys');
+      _reconnectTimer=setTimeout(()=>{
+        if(STATE.syncStatus==='connected') startRealtime();
+      }, 6000);
+    }
+    if(currentPage==='settings') renderCurrentPage();
+  };
+}
+
+function stopRealtime(){
+  clearTimeout(_reconnectTimer);
+  stopHeartbeat();
+  if(_ws){
+    _ws.onclose=null;
+    try{ _ws.close(1000,'User closed'); }catch(e){}
+    _ws=null;
+  }
+  STATE.supabase.realtimeEnabled=false;
+  updateRTPill('off');
+  rtAddLog('Stopped by user','sys');
+  if(currentPage==='settings') renderCurrentPage();
+}
+
+function joinChannel(table){
+  // ★ FIX 1: topic must be "realtime:*" for Supabase Realtime v2.
+  //   "realtime:public:tablename" was the v1 format and is rejected by v2
+  //   servers — they return a phx_reply error which silently kills the sub.
+  // ★ FIX 2: join_ref must be included and match ref.
+  const ref = String(++_wsRef);
+  wsSend({
+    topic:    'realtime:*',
+    event:    'phx_join',
+    payload: {
+      config: {
+        broadcast:        { self: false },
+        presence:         { key:  '' },
+        postgres_changes: [
+          { event: '*', schema: 'public', table: table }
+        ]
+      }
+    },
+    ref:      ref,
+    join_ref: ref       // ← required in v2
+  });
+  rtAddLog(`Subscribed: public.${table} (all events)`,'sys');
+}
+
+function startHeartbeat(){
+  stopHeartbeat();
+  _heartbeatTimer = setInterval(()=>{
+    wsSend({topic:'phoenix',event:'heartbeat',payload:{},ref:String(++_wsRef)});
+  }, 25000);
+}
+
+function stopHeartbeat(){
+  if(_heartbeatTimer){ clearInterval(_heartbeatTimer); _heartbeatTimer=null; }
+}
+
+function wsSend(obj){
+  if(_ws && _ws.readyState===WebSocket.OPEN) _ws.send(JSON.stringify(obj));
+}
+
+function handlePhoenixMessage(msg){
+  const {topic, event, payload} = msg;
+
+  // heartbeat pong — skip silently
+  if(event==='phx_reply' && topic==='phoenix') return;
+
+  // channel join ack
+  if(event==='phx_reply'){
+    if(payload?.status==='ok'){
+      rtAddLog('Channel joined ✓','sys');
+    } else {
+      const reason = payload?.response?.reason || JSON.stringify(payload?.response||{});
+      rtAddLog('Join FAILED: '+reason,'err');
+      toast('RT join failed — table not in publication? Run in SQL editor: ALTER PUBLICATION supabase_realtime ADD TABLE '+STATE.supabase.table,'err');
+    }
+    return;
+  }
+
+  if(event==='phx_error'){ rtAddLog('Error: '+JSON.stringify(payload).slice(0,120),'err'); return; }
+  if(event==='phx_close'){ rtAddLog('Channel closed by server','sys'); return; }
+
+  if(event==='postgres_changes'){
+    // ★ FIX 3: Realtime v2 wraps the change in payload.data (not payload directly).
+    //   Old code: const data = msg.payload?.data || msg.payload;
+    //   This worked in v1 but v2 always uses payload.data.
+    const data    = payload?.data ?? payload;
+    const evtType = (data?.type || '').toUpperCase();   // INSERT | UPDATE | DELETE
+    const record  = data?.record     || {};
+    const oldRec  = data?.old_record || {};
+
+    if(evtType==='INSERT' || evtType==='UPDATE'){
+      const id = record.id;
+      if(id){
+        if(!STATE.tasks[id]) STATE.tasks[id]={};
+        if(record.status       !== undefined) STATE.tasks[id].status = record.status;
+        if(record.actual_hours !== undefined) STATE.tasks[id].actual = record.actual_hours||0;
+        if(record.notes        !== undefined) STATE.notes[id]        = record.notes;
+        try{localStorage.setItem(STORE_KEY,JSON.stringify(STATE));}catch(e){}
+        rtAddLog(`${evtType} ${id} → ${record.status||''}`, evtType==='INSERT'?'insert':'update');
+        toast(`⚡ ${evtType}: ${id}`, 'rt');
+        flashRow(id);
+        renderAll();
+        renderCurrentPage();
+      }
+    } else if(evtType==='DELETE'){
+      const id = oldRec.id || record.id;
+      rtAddLog(`DELETE ${id||'?'}`, 'delete');
+      toast(`⚡ DELETE: ${id||'?'}`, 'rt');
+    } else if(evtType){
+      rtAddLog(`${evtType}: `+JSON.stringify(data).slice(0,80),'sys');
+    }
+    return;
+  }
+
+  // catch-all
+  if(event!=='heartbeat'){
+    rtAddLog(`[${event}] `+JSON.stringify(payload||{}).slice(0,80),'sys');
+  }
+}
+
+function flashRow(taskId){
+  document.querySelectorAll(`[data-task-id="${taskId}"]`).forEach(r=>{
+    r.classList.remove('rt-flash');
+    void r.offsetWidth;
+    r.classList.add('rt-flash');
+  });
+}
+
+// ═══════════════════ HELPERS ═══════════════════
+function allTasks(){return PHASES.flatMap(p=>p.tasks.map(t=>({...t,phaseId:p.id,phaseName:p.sub,phaseColor:p.color})));}
+function getTask(id){return allTasks().find(t=>t.id===id);}
+function getStatus(id){return STATE.tasks[id]?.status||'Not Started';}
+function getActual(id){return STATE.tasks[id]?.actual||0;}
+function setTaskField(id,field,val){if(!STATE.tasks[id])STATE.tasks[id]={};STATE.tasks[id][field]=val;saveState();}
+function cycleStatus(id,e){
+  if(e)e.stopPropagation();
+  const cycle=['Not Started','In Progress','Done','Blocked','In Review'];
+  const cur=getStatus(id);const next=cycle[(cycle.indexOf(cur)+1)%cycle.length];
+  setTaskField(id,'status',next);renderAll();renderCurrentPage();
+}
+function chkClass(s){return s==='Done'?'chk done':s==='In Progress'?'chk inprog':s==='Blocked'?'chk blocked':'chk';}
+function badgeStatus(s){
+  const m={'Done':'s-done','In Progress':'s-inprog','Not Started':'s-notstart','Blocked':'s-blocked','In Review':'s-review'};
+  return `<span class="badge ${m[s]||'s-notstart'}">${s}</span>`;
+}
+function badgePri(p){
+  const m={'Critical':'p-crit','High':'p-hi','Med':'p-med','Low':'p-lo'};
+  return `<span class="badge ${m[p]||'p-lo'}">${p}</span>`;
+}
+function phaseColor(pid){return PHASES.find(p=>p.id===pid)?.color||'#fff';}
+function totalHours(){return PHASES.reduce((s,p)=>s+p.hours,0);}
+function doneCount(){return allTasks().filter(t=>getStatus(t.id)==='Done').length;}
+function pct(a,b){return b===0?0:Math.round(a/b*100);}
+function loggedHours(){return allTasks().reduce((s,t)=>s+getActual(t.id),0);}
+function inProgCount(){return allTasks().filter(t=>getStatus(t.id)==='In Progress').length;}
+function blockedCount(){return allTasks().filter(t=>getStatus(t.id)==='Blocked').length;}
+function phaseProgress(p){const done=p.tasks.filter(t=>getStatus(t.id)==='Done').length;return{done,total:p.tasks.length,pct:pct(done,p.tasks.length)};}
+function weeklyVelTotal(){return STATE.velocity.reduce((s,v)=>s+v,0);}
+let _toastTimer=null;
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className=`toast ${type}`;
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.add('hidden'),3500);
+}
+
+// ═══════════════════ SUPABASE REST ═══════════════════
+async function testConnection(){
+  const {url,anonKey,table}=STATE.supabase;
+  if(!url||!anonKey)return toast('Enter URL and Anon Key first','err');
+  updateSyncUI('connecting');
+  try{
+    const r=await fetch(`${url}/rest/v1/${table}?select=id&limit=1`,{
+      headers:{'apikey':anonKey,'Authorization':`Bearer ${anonKey}`}
+    });
+    if(r.ok||r.status===406){
+      STATE.syncStatus='connected';updateSyncUI('connected');
+      toast('Connected to Supabase ✓','ok');saveState();
+    } else throw new Error(`HTTP ${r.status}`);
+  }catch(e){
+    STATE.syncStatus='disconnected';updateSyncUI('disconnected');
+    toast('Connection failed: '+e.message,'err');
+  }
+  renderCurrentPage();
+}
+
+async function pushToSupabase(){
+  const {url,anonKey,table}=STATE.supabase;
+  if(!url||!anonKey||STATE.syncStatus!=='connected')return;
+  try{
+    const r=await fetch(`${url}/rest/v1/${table}`,{
+      method:'POST',
+      headers:{'apikey':anonKey,'Authorization':`Bearer ${anonKey}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+      body:JSON.stringify(allTasks().map(t=>({id:t.id,phase:t.phaseId,name:t.name,status:getStatus(t.id),actual_hours:getActual(t.id),notes:STATE.notes[t.id]||'',priority:t.pri,updated_at:new Date().toISOString()})))
+    });
+    if(r.ok) toast('Pushed ✓','ok'); else toast('Push failed: HTTP '+r.status,'err');
+  }catch(e){toast('Push error: '+e.message,'err');}
+}
+
+async function pullFromSupabase(){
+  const {url,anonKey,table}=STATE.supabase;
+  if(!url||!anonKey||STATE.syncStatus!=='connected')return toast('Not connected','err');
+  try{
+    const r=await fetch(`${url}/rest/v1/${table}?select=*`,{headers:{'apikey':anonKey,'Authorization':`Bearer ${anonKey}`}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const rows=await r.json();
+    rows.forEach(row=>{
+      if(!STATE.tasks[row.id])STATE.tasks[row.id]={};
+      STATE.tasks[row.id].status=row.status;
+      STATE.tasks[row.id].actual=row.actual_hours||0;
+      if(row.notes) STATE.notes[row.id]=row.notes;
+    });
+    saveState();renderAll();renderCurrentPage();
+    toast(`Pulled ${rows.length} tasks ✓`,'ok');
+  }catch(e){toast('Pull failed: '+e.message,'err');}
+}
+
+async function syncNow(){
+  if(STATE.syncStatus==='connected'){await pushToSupabase();await pullFromSupabase();}
+  else toast('Not connected. Configure in Settings.','info');
+}
+
+function updateSyncUI(status){
+  STATE.syncStatus=status;
+  const dot=document.getElementById('sync-dot');const lbl=document.getElementById('sync-label');
+  if(!dot||!lbl)return;
+  dot.className='sync-dot '+status;
+  lbl.textContent=status==='connected'?'Supabase live':status==='connecting'?'Connecting…':'Not connected';
+}
+
+// ═══════════════════ ROUTING ═══════════════════
+let currentPage='dashboard';
+const PAGE_TITLES={
+  dashboard:['Dashboard','RixTrace Build Command Centre'],
+  phases:['Phase Map','7 phases · 50 tasks · 210 hours'],
+  tasks:['Task Intel','Full task breakdown with tracking'],
+  weekly:['Weekly Ops','18-week 4-hour execution model'],
+  velocity:['Velocity Log','Daily hour tracking'],
+  arch:['Architecture','6-layer system map'],
+  signals:['Signal Sources','10 intelligence feeds'],
+  settings:['Supabase Sync','REST + Realtime WebSocket'],
+};
+function gotoPage(p){
+  currentPage=p;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const pages=['dashboard','phases','tasks','weekly','velocity','arch','signals','settings'];
+  document.querySelectorAll('.nav-item')[pages.indexOf(p)]?.classList.add('active');
+  const[t,s]=PAGE_TITLES[p]||['',''];
+  document.getElementById('topbar-title').textContent=t;
+  document.getElementById('topbar-sub').textContent=s;
+  renderCurrentPage();
+}
+function renderCurrentPage(){
+  const renders={dashboard:renderDashboard,phases:renderPhases,tasks:renderTasks,
+    weekly:renderWeekly,velocity:renderVelocity,arch:renderArch,
+    signals:renderSignals,settings:renderSettings};
+  (renders[currentPage]||renderDashboard)();
+}
+function renderAll(){ document.getElementById('nb-tasks').textContent=allTasks().length; }
+
+// ═══════════════════ DASHBOARD ═══════════════════
+function renderDashboard(){
+  const c=document.getElementById('content');
+  const done=doneCount();const total=allTasks().length;const prog=pct(done,total);
+  const lh=loggedHours();const th=totalHours();
+  const phDone=PHASES.filter(p=>p.tasks.every(t=>getStatus(t.id)==='Done')).length;
+  c.innerHTML=`<div class="page">
+    <div class="metrics-grid">
+      <div class="metric g"><div class="metric-lbl">Overall progress</div><div class="metric-val">${prog}%</div><div class="metric-sub">${done}/${total} tasks done</div></div>
+      <div class="metric a"><div class="metric-lbl">Hours logged</div><div class="metric-val">${lh}</div><div class="metric-sub">of ~${th}h total</div></div>
+      <div class="metric b"><div class="metric-lbl">In progress</div><div class="metric-val">${inProgCount()}</div><div class="metric-sub">active tasks</div></div>
+      <div class="metric r"><div class="metric-lbl">Blocked</div><div class="metric-val">${blockedCount()}</div><div class="metric-sub">need resolution</div></div>
+      <div class="metric p"><div class="metric-lbl">Phases done</div><div class="metric-val">${phDone}<span style="font-size:14px;color:var(--textm)">/${PHASES.length}</span></div><div class="metric-sub">complete</div></div>
+    </div>
+    <div class="grid2" style="margin-bottom:14px;">
+      <div class="card"><div class="card-head"><span class="card-title">Phase maturity</span></div><div class="card-body" id="db-phases"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">Execution gantt — phases vs weeks</span></div><div class="card-body" id="db-gantt"></div></div>
+    </div>
+    <div class="grid3">
+      <div class="card"><div class="card-head"><span class="card-title">Active tasks</span></div><div class="card-body" id="db-active"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">Blocked tasks</span></div><div class="card-body" id="db-blocked"></div></div>
+      <div class="card"><div class="card-head"><span class="card-title">This week</span></div><div class="card-body" id="db-thisweek"></div></div>
+    </div>
+  </div>`;
+  document.getElementById('db-phases').innerHTML=PHASES.map(p=>{const pr=phaseProgress(p);return`<div class="phase-row"><div class="phase-hdr" onclick="gotoPage('phases')"><span class="phase-name" style="color:${pr.pct===100?p.color:'var(--text)'}">${p.name} — ${p.sub}</span><span class="phase-meta">${pr.done}/${pr.total} · ${p.hours}h</span></div><div class="pbar"><div class="pbar-fill" style="width:${pr.pct}%;background:${p.color}"></div></div></div>`;}).join('');
+  document.getElementById('db-gantt').innerHTML=PHASES.map(p=>{const ws=parseInt(p.weeks.split('-')[0]);const we=parseInt(p.weeks.split('-')[1]||ws);const left=pct(ws-1,18);const width=pct(we-ws+1,18);const pr=phaseProgress(p);return`<div class="gantt-row"><div class="gantt-label">${p.name}</div><div class="gantt-track"><div class="gantt-fill" style="left:${left}%;width:${width}%;background:${p.color};opacity:${0.4+pr.pct*0.006}"><span style="color:#000;font-family:var(--mono);font-size:9px;font-weight:600">W${ws}–${we}</span></div></div></div>`;}).join('');
+  const active=allTasks().filter(t=>getStatus(t.id)==='In Progress').slice(0,5);
+  document.getElementById('db-active').innerHTML=active.length?active.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border)"><button class="chk inprog" onclick="cycleStatus('${t.id}',event)"></button><span style="font-size:11px;flex:1;color:var(--textd)">${t.name}</span><span style="font-family:var(--mono);font-size:9px;color:${phaseColor(t.phaseId)}">${t.phaseId}</span></div>`).join(''):`<div style="color:var(--textm);font-family:var(--mono);font-size:11px;padding:10px 0">No active tasks</div>`;
+  const blocked=allTasks().filter(t=>getStatus(t.id)==='Blocked').slice(0,5);
+  document.getElementById('db-blocked').innerHTML=blocked.length?blocked.map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border)"><div style="width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0"></div><span style="font-size:11px;flex:1;color:var(--textd)">${t.name}</span></div>`).join(''):`<div style="color:var(--textm);font-family:var(--mono);font-size:11px;padding:10px 0">No blocked tasks 🎉</div>`;
+  const wkData=WEEKS_DATA[STATE.activeWeek-1]||WEEKS_DATA[0];
+  document.getElementById('db-thisweek').innerHTML=`<div style="margin-bottom:10px;"><div style="font-family:var(--mono);font-size:9px;color:var(--textm);margin-bottom:4px">WEEK ${wkData.n} FOCUS</div><div style="font-size:13px;font-weight:600;color:var(--accent)">${wkData.focus}</div><div style="font-size:11px;color:var(--textm);margin-top:3px">${wkData.outcome}</div></div><div style="font-family:var(--mono);font-size:10px;color:var(--textm)">Target: ${wkData.hrs}h · Logged: ${weeklyVelTotal()}h</div>`;
+}
+
+// ═══════════════════ PHASES ═══════════════════
+function renderPhases(){
+  const c=document.getElementById('content');const sel=STATE.selectedPhase;
+  c.innerHTML=`<div class="page"><div class="grid2t" style="gap:14px;"><div><div class="card"><div class="card-head"><span class="card-title">7 Build Phases</span></div><div class="card-body" id="ph-list" style="padding:8px 12px;"></div></div></div><div id="ph-detail"><div class="card" style="padding:40px;text-align:center;"><div style="font-family:var(--mono);font-size:11px;color:var(--textm)">← Select a phase to drill in</div></div></div></div></div>`;
+  document.getElementById('ph-list').innerHTML=PHASES.map(p=>{const pr=phaseProgress(p);const ia=sel===p.id;return`<div onclick="selectPhase('${p.id}')" style="padding:10px;border-radius:7px;cursor:pointer;border:0.5px solid ${ia?p.color+'40':'transparent'};background:${ia?p.color+'0a':'transparent'};margin-bottom:4px;"><div class="phase-hdr" style="margin-bottom:6px;"><span class="phase-name" style="color:${ia?p.color:'var(--text)'}">${p.name}</span><span class="phase-meta">W${p.weeks}</span></div><div style="font-size:11px;color:var(--textm);margin-bottom:6px">${p.sub} · ${p.hours}h</div><div class="pbar"><div class="pbar-fill" style="width:${pr.pct}%;background:${p.color}"></div></div><div style="font-family:var(--mono);font-size:9px;color:var(--textm);margin-top:4px">${pr.done}/${pr.total} · ${pr.pct}%</div></div>`;}).join('');
+  if(sel) renderPhaseDetail(sel);
+}
+function selectPhase(pid){STATE.selectedPhase=pid;saveState();renderPhases();}
+function renderPhaseDetail(pid){
+  const p=PHASES.find(x=>x.id===pid);if(!p)return;const pr=phaseProgress(p);
+  document.getElementById('ph-detail').innerHTML=`<div class="card"><div class="card-head" style="border-bottom-color:${p.color}30"><div><span class="card-title" style="color:${p.color}">${p.name} — ${p.sub}</span><div style="font-size:11px;color:var(--textm);margin-top:3px">Weeks ${p.weeks} · ~${p.hours}h · ${pr.done}/${pr.total} tasks</div></div><span style="font-family:var(--mono);font-size:20px;font-weight:700;color:${p.color}">${pr.pct}%</span></div><div class="card-body" style="padding:0;"><table class="task-table"><thead><tr><th></th><th>Task</th><th>Track</th><th>Est h</th><th>Act h</th><th>Status</th><th>Pri</th><th>Deps</th></tr></thead><tbody>${p.tasks.map(t=>{const s=getStatus(t.id);const a=getActual(t.id);return`<tr onclick="selectTask('${t.id}')" data-task-id="${t.id}"><td><button class="${chkClass(s)}" onclick="cycleStatus('${t.id}',event)"></button></td><td style="color:var(--textd)">${t.name}</td><td><span class="tag">${t.track}</span></td><td><span style="font-family:var(--mono);font-size:10px;color:var(--textm)">${t.est}h</span></td><td><input class="hrs-inp" type="number" min="0" max="99" value="${a}" onclick="event.stopPropagation()" onchange="setActual('${t.id}',this)"></td><td>${badgeStatus(s)}</td><td>${badgePri(t.pri)}</td><td>${t.dep.map(d=>`<span class="dep-chip">${d}</span>`).join('')||'—'}</td></tr>`;}).join('')}</tbody></table></div></div><div id="task-note-panel"></div>`;
+}
+function setActual(id,inp){setTaskField(id,'actual',parseFloat(inp.value)||0);renderAll();}
+
+// ═══════════════════ TASKS ═══════════════════
+let taskPhaseF='all',taskStatusF='all',taskPriF='all',taskTrackF='all';
+function renderTasks(){
+  const c=document.getElementById('content');
+  c.innerHTML=`<div class="page"><div class="filter-bar">
+    <select onchange="taskPhaseF=this.value;renderTasks()"><option value="all">All phases</option>${PHASES.map(p=>`<option value="${p.id}" ${taskPhaseF===p.id?'selected':''}>${p.name}</option>`).join('')}</select>
+    <select onchange="taskStatusF=this.value;renderTasks()"><option value="all">All statuses</option>${['Not Started','In Progress','Done','Blocked','In Review'].map(s=>`<option value="${s}" ${taskStatusF===s?'selected':''}>${s}</option>`).join('')}</select>
+    <select onchange="taskPriF=this.value;renderTasks()"><option value="all">All priorities</option>${['Critical','High','Med','Low'].map(p=>`<option value="${p}" ${taskPriF===p?'selected':''}>${p}</option>`).join('')}</select>
+    <select onchange="taskTrackF=this.value;renderTasks()"><option value="all">All tracks</option>${['Infra','Backend','Signals','Intelligence','Reports','Product','Security','QA'].map(tr=>`<option value="${tr}" ${taskTrackF===tr?'selected':''}>${tr}</option>`).join('')}</select>
+    <span class="filter-count" id="task-fc"></span>
+  </div>
+  <div class="card"><div class="table-wrap"><table class="task-table"><thead><tr><th></th><th>ID</th><th>Task</th><th>Phase</th><th>Track</th><th>Est h</th><th>Act h</th><th>Status</th><th>Pri</th></tr></thead><tbody id="tasks-tbody"></tbody></table></div></div>
+  <div id="task-detail-area"></div></div>`;
+  let tasks=allTasks();
+  if(taskPhaseF!=='all') tasks=tasks.filter(t=>t.phaseId===taskPhaseF);
+  if(taskStatusF!=='all') tasks=tasks.filter(t=>getStatus(t.id)===taskStatusF);
+  if(taskPriF!=='all') tasks=tasks.filter(t=>t.pri===taskPriF);
+  if(taskTrackF!=='all') tasks=tasks.filter(t=>t.track===taskTrackF);
+  document.getElementById('task-fc').textContent=`${tasks.length} tasks`;
+  document.getElementById('tasks-tbody').innerHTML=tasks.map(t=>{const s=getStatus(t.id);const a=getActual(t.id);const isSel=STATE.selectedTask===t.id;return`<tr onclick="selectTask('${t.id}')" class="${isSel?'selected':''}" data-task-id="${t.id}"><td><button class="${chkClass(s)}" onclick="cycleStatus('${t.id}',event)"></button></td><td><span style="font-family:var(--mono);font-size:9px;color:var(--textm)">${t.id}</span></td><td style="color:var(--textd)">${t.name}</td><td><span style="font-family:var(--mono);font-size:9px;color:${t.phaseColor}">${t.phaseId}</span></td><td><span class="tag">${t.track}</span></td><td><span style="font-family:var(--mono);font-size:10px;color:var(--textm)">${t.est}h</span></td><td><input class="hrs-inp" type="number" min="0" max="99" value="${a}" onclick="event.stopPropagation()" onchange="setActual('${t.id}',this)"></td><td>${badgeStatus(s)}</td><td>${badgePri(t.pri)}</td></tr>`;}).join('');
+  if(STATE.selectedTask) renderTaskDetailPanel(STATE.selectedTask);
+}
+function selectTask(id){STATE.selectedTask=id;saveState();renderCurrentPage();}
+function renderTaskDetailPanel(id){
+  const t=getTask(id);if(!t)return;const s=getStatus(id);const a=getActual(id);const note=STATE.notes[id]||'';
+  const area=document.getElementById('task-detail-area')||document.getElementById('task-note-panel');
+  if(!area)return;
+  area.innerHTML=`<div class="detail-panel"><div class="detail-title">${t.name}</div><div class="detail-row"><div class="detail-field"><div class="detail-lbl">ID</div><div class="detail-val" style="font-family:var(--mono)">${t.id}</div></div><div class="detail-field"><div class="detail-lbl">Phase</div><div class="detail-val" style="color:${t.phaseColor}">${t.phaseId} — ${t.phaseName}</div></div><div class="detail-field"><div class="detail-lbl">Track</div><div class="detail-val">${t.track}</div></div><div class="detail-field"><div class="detail-lbl">Priority</div><div class="detail-val">${badgePri(t.pri)}</div></div><div class="detail-field"><div class="detail-lbl">Status</div><div class="detail-val">${badgeStatus(s)}</div></div><div class="detail-field"><div class="detail-lbl">Est / Actual</div><div class="detail-val" style="font-family:var(--mono)">${t.est}h / ${a}h</div></div></div><div class="detail-lbl">Dependencies</div><div style="margin-bottom:10px">${t.dep.map(d=>`<span class="dep-chip">${d}: ${getTask(d)?.name||d}</span>`).join('')||'<span style="color:var(--textm);font-size:11px">None</span>'}</div><div class="detail-lbl">Notes</div><textarea class="notes-area" id="note-ta" placeholder="Add notes, links, blockers...">${note}</textarea><div style="margin-top:8px;display:flex;gap:8px;"><button class="btn btn-accent" onclick="saveNote('${id}')">Save note</button><button class="btn btn-ghost" onclick="cycleStatus('${id}')">Cycle status</button></div></div>`;
+}
+function saveNote(id){const ta=document.getElementById('note-ta');if(!ta)return;STATE.notes[id]=ta.value;saveState();toast('Note saved ✓');}
+
+// ═══════════════════ WEEKLY ═══════════════════
+function renderWeekly(){
+  const c=document.getElementById('content');
+  c.innerHTML=`<div class="page"><div class="sec-head" style="margin-bottom:14px;"><div class="sec-title">18-Week Execution Model — 4h/week · ~72h total</div></div><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px;" id="week-grid"></div><div class="card" id="week-detail"></div></div>`;
+  document.getElementById('week-grid').innerHTML=WEEKS_DATA.map(w=>{const ia=STATE.activeWeek===w.n;const phColor=PHASES.find(p=>p.id===w.phase)?.color||'#fff';return`<div class="week-card ${ia?'active-week':''}" onclick="selectWeek(${w.n})"><div class="wk-num">WEEK ${w.n}</div><div class="wk-focus" style="color:${ia?phColor:'var(--text)'};font-size:11px">${w.focus}</div><div class="wk-phase" style="color:${phColor}">${w.phase}</div><div class="wk-out">${w.outcome}</div><div class="wk-hrs">Target: ${w.hrs}h</div></div>`;}).join('');
+  renderWeekDetail(STATE.activeWeek);
+}
+function selectWeek(n){STATE.activeWeek=n;saveState();renderWeekly();}
+function renderWeekDetail(n){
+  const w=WEEKS_DATA[n-1];if(!w)return;const p=PHASES.find(x=>x.id===w.phase);const el=document.getElementById('week-detail');if(!el)return;
+  const pr=p?phaseProgress(p):{done:0,total:0,pct:0};
+  el.innerHTML=`<div class="card-head"><div><span class="card-title" style="color:${p?.color}">Week ${w.n} — ${w.focus}</span><div style="font-size:11px;color:var(--textm);margin-top:3px">Phase: ${w.phase} · ${p?.sub} · Target: ${w.hrs}h</div></div><span class="badge s-inprog">${w.outcome}</span></div><div class="card-body"><div style="font-size:12px;color:var(--textd);margin-bottom:12px">${p?.sub} is ${pr.pct}% complete — ${pr.done}/${pr.total} tasks done</div><div class="pbar" style="margin-bottom:14px;height:5px"><div class="pbar-fill" style="width:${pr.pct}%;background:${p?.color}"></div></div>${p?p.tasks.slice(0,5).map(t=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:0.5px solid var(--border)"><button class="${chkClass(getStatus(t.id))}" onclick="cycleStatus('${t.id}',event)"></button><span style="font-size:11px;flex:1;color:var(--textd)">${t.name}</span><span style="font-family:var(--mono);font-size:9px;color:var(--textm)">${t.est}h</span>${badgeStatus(getStatus(t.id))}</div>`).join(''):''}</div>`;
+}
+
+// ═══════════════════ VELOCITY ═══════════════════
+function renderVelocity(){
+  const c=document.getElementById('content');const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];const total=weeklyVelTotal();
+  c.innerHTML=`<div class="page"><div class="metrics-grid" style="grid-template-columns:repeat(4,1fr)"><div class="metric g"><div class="metric-lbl">This week</div><div class="metric-val">${total}h</div><div class="metric-sub">hours logged</div></div><div class="metric a"><div class="metric-lbl">Daily avg</div><div class="metric-val">${(total/7).toFixed(1)}h</div><div class="metric-sub">per day</div></div><div class="metric b"><div class="metric-lbl">On target?</div><div class="metric-val" style="font-size:16px;padding-top:4px">${total>=4?'Yes ✓':'Below'}</div><div class="metric-sub">Goal: 4h/week</div></div><div class="metric p"><div class="metric-lbl">Total logged</div><div class="metric-val">${loggedHours()}h</div><div class="metric-sub">all tasks</div></div></div><div class="card" style="margin-bottom:14px;"><div class="card-head"><span class="card-title">This week — click bars to add +1h</span><button class="btn btn-ghost" onclick="resetVelocity()">Reset week</button></div><div class="card-body"><div style="display:flex;gap:8px;align-items:flex-end;height:120px;padding-bottom:4px;">${days.map((d,i)=>{const h=STATE.velocity[i];const max=Math.max(...STATE.velocity,4);const pxH=Math.max(4,Math.round(h/max*100));return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1"><div style="font-family:var(--mono);font-size:9px;color:${h>0?'var(--accent)':'var(--textm)'};margin-bottom:4px;text-align:center">${h}h</div><div style="flex:1;display:flex;align-items:flex-end;width:100%"><div onclick="addVelHour(${i})" style="width:100%;height:${pxH}px;background:${h>0?'var(--accent)':'rgba(255,255,255,0.06)'};border-radius:3px 3px 0 0;cursor:pointer;transition:all 0.2s" onmouseover="this.style.opacity=0.7" onmouseout="this.style.opacity=1"></div></div><div style="font-family:var(--mono);font-size:9px;color:var(--textm);text-align:center;margin-top:4px">${d}</div></div>`;}).join('')}</div></div></div><div class="card"><div class="card-head"><span class="card-title">Manual log</span></div><div class="card-body"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">${days.map((d,i)=>`<div style="display:flex;align-items:center;gap:6px;"><span style="font-family:var(--mono);font-size:10px;color:var(--textm);width:28px">${d}</span><input class="hrs-inp" type="number" min="0" max="16" value="${STATE.velocity[i]}" onchange="setVelDay(${i},this.value)"></div>`).join('')}<button class="btn btn-accent" onclick="saveVelocity()" style="margin-left:auto">Save log</button></div></div></div></div>`;
+}
+function addVelHour(i){STATE.velocity[i]=Math.min(16,STATE.velocity[i]+1);saveState();renderVelocity();}
+function setVelDay(i,v){STATE.velocity[i]=parseFloat(v)||0;}
+function saveVelocity(){saveState();toast('Velocity saved ✓');renderVelocity();}
+function resetVelocity(){STATE.velocity=[0,0,0,0,0,0,0];saveState();renderVelocity();}
+
+// ═══════════════════ ARCHITECTURE ═══════════════════
+let selLayer=null;
+function renderArch(){
+  const c=document.getElementById('content');
+  c.innerHTML=`<div class="page"><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;" id="arch-grid"></div><div id="arch-detail-wrap"></div><div class="card" style="margin-top:12px;"><div class="card-head"><span class="card-title">Full stack overview</span></div><div class="card-body"><div style="display:flex;flex-direction:column;gap:8px;">${ARCH_LAYERS.map(l=>`<div style="display:flex;gap:10px;padding:10px;background:var(--s2);border-radius:6px;border:0.5px solid var(--border)"><div style="font-size:16px;width:24px;text-align:center">${l.ico}</div><div style="flex:1"><div style="font-size:12px;font-weight:600;color:${l.color};margin-bottom:3px">${l.name}</div><div style="font-size:11px;color:var(--textm);margin-bottom:5px">${l.desc}</div><div>${l.techs.map(tech=>`<span class="arch-tech-chip">${tech}</span>`).join('')}</div></div></div>`).join('')}</div></div></div></div>`;
+  document.getElementById('arch-grid').innerHTML=ARCH_LAYERS.map(l=>`<div class="arch-layer ${selLayer===l.id?'selected-layer':''}" onclick="selectLayer('${l.id}')"><div class="arch-ico">${l.ico}</div><div class="arch-name" style="color:${selLayer===l.id?l.color:'var(--text)'}">${l.name}</div><div class="arch-sub">${l.sub}</div></div>`).join('');
+  if(selLayer) renderArchDetail(selLayer);
+}
+function selectLayer(id){selLayer=id;renderArch();}
+function renderArchDetail(id){
+  const l=ARCH_LAYERS.find(x=>x.id===id);if(!l)return;
+  document.getElementById('arch-detail-wrap').innerHTML=`<div class="arch-detail-card" style="border-color:${l.color}30"><div style="font-size:13px;font-weight:600;color:${l.color};margin-bottom:6px">${l.ico} ${l.name} — ${l.sub}</div><div style="font-size:12px;color:var(--textd);margin-bottom:10px">${l.desc}</div><div class="detail-lbl" style="margin-bottom:6px">Technologies</div><div>${l.techs.map(t=>`<span class="arch-tech-chip">${t}</span>`).join('')}</div></div>`;
+}
+
+// ═══════════════════ SIGNALS ═══════════════════
+function renderSignals(){
+  const c=document.getElementById('content');const tiers=['Core','Advanced','Extended'];
+  c.innerHTML=`<div class="page"><div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)"><div class="metric g"><div class="metric-lbl">Total signals</div><div class="metric-val">${SIGNALS_DATA.length}</div><div class="metric-sub">intelligence feeds</div></div><div class="metric b"><div class="metric-lbl">Core signals</div><div class="metric-val">${SIGNALS_DATA.filter(s=>s.tier==='Core').length}</div><div class="metric-sub">Phase 0–2</div></div><div class="metric p"><div class="metric-lbl">Advanced</div><div class="metric-val">${SIGNALS_DATA.filter(s=>s.tier!=='Core').length}</div><div class="metric-sub">Phase 2+</div></div></div>${tiers.map(tier=>`<div class="card" style="margin-bottom:12px;"><div class="card-head"><span class="card-title">${tier} signals</span><span style="font-family:var(--mono);font-size:9px;color:var(--textm)">${SIGNALS_DATA.filter(s=>s.tier===tier).length} feeds</span></div><div class="card-body" style="padding:0 16px;">${SIGNALS_DATA.filter(s=>s.tier===tier).map(sig=>`<div class="signal-item"><div style="width:8px;height:8px;border-radius:50%;background:${sig.color};flex-shrink:0"></div><div class="signal-name" style="color:${sig.color}">${sig.name}</div><div class="signal-type">${sig.type}</div>${badgeStatus('Not Started')}</div>`).join('')}</div></div>`).join('')}</div>`;
+}
+
+// ═══════════════════ SETTINGS ═══════════════════
+function renderSettings(){
+  const sb=STATE.supabase;
+  const isRT=_ws&&_ws.readyState===WebSocket.OPEN;
+  const c=document.getElementById('content');
+  c.innerHTML=`<div class="page"><div class="grid2" style="align-items:start;">
+    <div class="card"><div class="card-head"><span class="card-title">Supabase Connection</span></div><div class="card-body">
+      <div class="settings-section"><div class="settings-title">Project credentials</div>
+        <div class="form-row"><label class="form-label">Supabase Project URL</label><input class="form-input" id="sb-url" type="text" placeholder="https://xyz.supabase.co" value="${sb.url}"></div>
+        <div class="form-row"><label class="form-label">Anon / Public Key</label><input class="form-input" id="sb-key" type="password" placeholder="eyJ…" value="${sb.anonKey}"><div class="form-hint">Project Settings → API → anon public key</div></div>
+        <div class="form-row"><label class="form-label">Table name</label><input class="form-input" id="sb-table" type="text" placeholder="rixtrace_tasks" value="${sb.table}"></div>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-section"><div class="settings-title">Sync options</div>
+        <div class="toggle-row"><span class="toggle-label">Auto-sync on task update (REST push)</span><div class="toggle ${sb.autoSync?'on':''}" id="tog-autosync" onclick="toggleOption('autoSync')"></div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+        <button class="btn btn-accent" onclick="saveSupabaseSettings()">Save settings</button>
+        <button class="btn btn-blue" onclick="testConnection()">Test REST</button>
+        <button class="btn btn-ghost" onclick="pushToSupabase()">↑ Push</button>
+        <button class="btn btn-ghost" onclick="pullFromSupabase()">↓ Pull</button>
+      </div>
+    </div></div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card"><div class="card-head">
+        <span class="card-title">Realtime WebSocket</span>
+        <span style="font-family:var(--mono);font-size:9px;color:${isRT?'var(--cyan)':'var(--textm)'}">${isRT?'● LIVE':'○ OFFLINE'}</span>
+      </div><div class="card-body">
+        <div style="font-size:12px;color:var(--textd);margin-bottom:12px;line-height:1.6">
+          Opens a persistent <strong style="color:var(--text)">Phoenix WebSocket</strong> to Supabase Realtime.
+          Task updates from any other tab or external tool push live — no polling.
+        </div>
+        <div style="background:var(--s3);border:0.5px solid var(--border);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:10px;color:var(--textm);margin-bottom:12px;line-height:1.7">
+          <div><span style="color:var(--textd)">WS endpoint:</span> wss://…supabase.co/realtime/v1/websocket</div>
+          <div><span style="color:var(--textd)">Topic:</span> realtime:* <span style="color:rgba(0,212,255,0.6)">(v2 wildcard — NOT realtime:public:table)</span></div>
+          <div><span style="color:var(--textd)">Filter:</span> schema=public, table=${sb.table}, event=*</div>
+          <div><span style="color:var(--textd)">Heartbeat:</span> every 25s</div>
+          <div><span style="color:var(--textd)">Status:</span> <span style="color:${isRT?'var(--cyan)':'var(--red)'}">${isRT?'Connected':'Disconnected'}</span></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+          <button class="btn ${isRT?'btn-ghost':'btn-cyan'}" onclick="startRealtime()">${isRT?'Already connected':'▶ Connect Realtime'}</button>
+          <button class="btn btn-ghost" onclick="stopRealtime()" ${!isRT?'disabled style="opacity:0.4;cursor:not-allowed"':''}>■ Disconnect</button>
+        </div>
+        <div style="background:rgba(255,184,59,0.06);border:0.5px solid rgba(255,184,59,0.2);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:9px;color:var(--amber);line-height:1.7;margin-bottom:12px;">
+          ⚠ Table must be in supabase_realtime publication. Run once in SQL editor:<br>
+          <span style="color:var(--textd)">ALTER PUBLICATION supabase_realtime ADD TABLE ${sb.table};</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--textm);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Event log</div>
+        <div class="rt-log" id="rt-event-log"></div>
+        <button class="btn btn-ghost" style="margin-top:8px;font-size:9px" onclick="_rtEvents=[];renderCurrentPage()">Clear log</button>
+      </div></div>
+
+      <div class="card"><div class="card-head"><span class="card-title">Sync status</span></div><div class="card-body">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <div class="sync-dot ${STATE.syncStatus}" style="width:10px;height:10px"></div>
+          <span style="font-family:var(--mono);font-size:12px;color:${STATE.syncStatus==='connected'?'var(--accent)':'var(--red)'}">REST: ${STATE.syncStatus==='connected'?'Connected':'Disconnected'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${isRT?'var(--cyan)':'var(--textm)'};flex-shrink:0;${isRT?'animation:pulse 1.2s infinite':''}"></div>
+          <span style="font-family:var(--mono);font-size:12px;color:${isRT?'var(--cyan)':'var(--textm)'}">Realtime: ${isRT?'Live':'Offline'}</span>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--textm)">Tasks: ${allTasks().length} · Done: ${doneCount()} · Hours: ${loggedHours()}h</div>
+      </div></div>
+
+      <div class="card"><div class="card-head"><span class="card-title">Table schema (SQL)</span></div><div class="card-body">
+        <pre style="background:var(--s3);border:0.5px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:10px;color:var(--textd);overflow-x:auto;line-height:1.6">${escHtml(`create table rixtrace_tasks (
+  id           text primary key,
+  phase        text,
+  name         text,
+  status       text default 'Not Started',
+  actual_hours float default 0,
+  notes        text default '',
+  priority     text,
+  updated_at   timestamptz default now()
+);
+
+alter table rixtrace_tasks enable row level security;
+create policy "anon rw" on rixtrace_tasks
+  for all using (true) with check (true);
+
+-- Required for Realtime:
+alter publication supabase_realtime
+  add table rixtrace_tasks;`)}</pre>
+      </div></div>
+    </div>
+  </div></div>`;
+  const logEl=document.getElementById('rt-event-log');
+  if(logEl) renderRTLog(logEl);
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function saveSupabaseSettings(){
+  STATE.supabase.url=(document.getElementById('sb-url')?.value||'').trim();
+  STATE.supabase.anonKey=(document.getElementById('sb-key')?.value||'').trim();
+  STATE.supabase.table=(document.getElementById('sb-table')?.value||'rixtrace_tasks').trim();
+  saveState();toast('Settings saved ✓');updateSyncUI(STATE.syncStatus);
+}
+function toggleOption(key){
+  STATE.supabase[key]=!STATE.supabase[key];saveState();
+  const tog=document.getElementById('tog-autosync');
+  if(tog) tog.classList.toggle('on',STATE.supabase[key]);
+  toast(`${key} ${STATE.supabase[key]?'enabled':'disabled'}`,'info');
+}
+
+// ═══════════════════ EXPORT / RESET ═══════════════════
+function exportData(){
+  const payload={exported:new Date().toISOString(),
+    tasks:allTasks().map(t=>({id:t.id,phase:t.phaseId,name:t.name,status:getStatus(t.id),estimated_hours:t.est,actual_hours:getActual(t.id),priority:t.pri,track:t.track,notes:STATE.notes[t.id]||''})),
+    phases:PHASES.map(p=>{const pr=phaseProgress(p);return{id:p.id,name:p.sub,...pr,totalHours:p.hours};}),
+    velocity:STATE.velocity,
+    summary:{totalTasks:allTasks().length,done:doneCount(),inProgress:inProgCount(),loggedHours:loggedHours(),totalHours:totalHours()}
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`rixtrace_export_${new Date().toISOString().slice(0,10)}.json`;a.click();
+  toast('Export downloaded ✓');
+}
+function resetConfirm(){
+  if(confirm('Reset all progress? Cannot be undone.')){
+    STATE.tasks={};STATE.notes={};STATE.velocity=[0,0,0,0,0,0,0];
+    saveState();renderAll();renderCurrentPage();toast('State reset','info');
+  }
+}
+
+// ═══════════════════ BOOT ═══════════════════
+updateSyncUI(STATE.syncStatus);
+renderAll();
+renderCurrentPage();
+setTimeout(()=>testConnection(), 700);
+// Auto-reconnect Realtime if previously enabled
+if(STATE.supabase.realtimeEnabled){
+  const waitRT=setInterval(()=>{
+    if(STATE.syncStatus==='connected'){clearInterval(waitRT);startRealtime();}
+  },500);
+  setTimeout(()=>clearInterval(waitRT),8000);
+}
+</script>
+</body>
+</html>
