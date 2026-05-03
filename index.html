@@ -956,16 +956,11 @@ function exportData(){
 function resetConfirm(){if(confirm('Reset all progress? Cannot be undone.')){STATE.tasks={};STATE.notes={};STATE.velocity=[0,0,0,0,0,0,0];saveState();renderAll();renderCurrentPage();toast('State reset','info');}}
 
 // ═══════════════════ BOOT ═══════════════════
-// Auto-seed credentials if not already saved
-if(!STATE.supabase.url){
-  STATE.supabase.url='https://alxtlzxbjpxxdrpohnvb.supabase.co';
-  STATE.supabase.anonKey='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFseHRsenhianB4eGRycG9obnZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NTM3NTUsImV4cCI6MjA5MDAyOTc1NX0.7B41JEAgwt0LmubRQoq4csfTdH4J_I2DXUzHe7iGZkw';
-  STATE.supabase.table='rixtrace_tasks';
-  STATE.supabase.autoSync=true;
-  try{localStorage.setItem(STORE_KEY,JSON.stringify(STATE));}catch(e){}
-}
 updateSyncUI(STATE.syncStatus);
 renderAll();
 renderCurrentPage();
 if(STATE.supabase.url&&STATE.supabase.anonKey){setTimeout(()=>testConnection(),700);}
 if(STATE.supabase.realtimeEnabled){const waitRT=setInterval(()=>{if(STATE.syncStatus==='connected'){clearInterval(waitRT);startRealtime();}},500);setTimeout(()=>clearInterval(waitRT),8000);}
+</script>
+</body>
+</html>
