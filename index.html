@@ -939,10 +939,11 @@ alter publication supabase_realtime
 }
 
 function saveSupabaseSettings(){
-  STATE.supabase.url=(document.getElementById('sb-url')?.value||'').trim();
-  STATE.supabase.anonKey=(document.getElementById('sb-key')?.value||'').trim();
-  STATE.supabase.table=(document.getElementById('sb-table')?.value||'rixtrace_tasks').trim();
-  saveState();toast('Settings saved ✓');updateSyncUI(STATE.syncStatus);
+STATE.supabase.url='https://alxtlzxbjpxxdrpohnvb.supabase.co';
+STATE.supabase.anonKey='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFseHRsenhianB4eGRycG9obnZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NTM3NTUsImV4cCI6MjA5MDAyOTc1NX0.7B41JEAgwt0LmubRQoq4csfTdH4J_I2DXUzHe7iGZkw';
+STATE.supabase.table='rixtrace_tasks';
+STATE.supabase.autoSync=true;
+try{localStorage.setItem(STORE_KEY,JSON.stringify(STATE));}catch(e){}
 }
 function toggleOption(key){STATE.supabase[key]=!STATE.supabase[key];saveState();const tog=document.getElementById('tog-autosync');if(tog)tog.classList.toggle('on',STATE.supabase[key]);toast(`${key} ${STATE.supabase[key]?'enabled':'disabled'}`,'info');}
 
